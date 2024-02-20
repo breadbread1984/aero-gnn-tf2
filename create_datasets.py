@@ -15,7 +15,7 @@ def add_options():
   flags.DEFINE_string('input_csv', default = None, help = 'path to polymer dataset csv')
   flags.DEFINE_string('output_dir', default = 'dataset', help = 'path to output directory')
 
-def smiles_to_sample(smiles, label):
+def smiles_to_sample(smiles, label, head = 1, channels = 64):
   molecule = Chem.MolFromSmiles(smiles)
   nodes = list()
   edges = list()
@@ -51,13 +51,14 @@ def smiles_to_sample(smiles, label):
     },
     context = tfgnn.Context.from_fields(
       features = {
+        tfgnn.HIDDEN_STATE: tf.zeros((nodes.shape[0], head, channels // head)), # z.shape = (node_num, head, channels // head)
         "label": tf.constant([label,], dtype = tf.float32)
       }
     )
   )
   return graph
 
-def graph_tensor_spec():
+def graph_tensor_spec(head = 1, channels = 64):
   spec = tfgnn.GraphTensorSpec.from_piece_specs(
       node_sets_spec = {
         "atom": tfgnn.NodeSetSpec.from_field_specs(
@@ -78,6 +79,7 @@ def graph_tensor_spec():
       },
       context_spec = tfgnn.ContextSpec.from_field_specs(
         features_spec = {
+          tfgnn.HIDDEN_STATE: tf.TensorSpec(shape = (None, head, channels // head), dtype = tf.float32), #z_scale.shape = (node_num, head, channel // head)
           'label': tf.TensorSpec(shape = (1,), dtype = tf.float32)
         }
       )
