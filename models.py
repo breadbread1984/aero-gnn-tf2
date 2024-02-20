@@ -115,7 +115,8 @@ def AEROGNN(channels = 64, head = 1, lambd = 1., layer_num = 10, drop_rate = 0.6
           },
           next_state = UpdateHidden()
         )
-      }
+      },
+      context = UpdateZ(k = i + 1, channels = channels, head = head, lambd = lambd)
     )(results)
   results = tfgnn.keras.layers.Pool(tag = tfgnn.CONTEXT, reduce_type = "mean", node_set_name = "atom")(results)
   results = tf.keras.layers.Dense(1)(results)
