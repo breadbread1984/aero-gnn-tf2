@@ -92,6 +92,13 @@ class Propagate(tf.keras.layers.Layer):
   def from_config(cls, config):
     return cls(**config)
 
+class UpdateHidden(tf.keras.layers.Layer):
+  def __init__(self,):
+    super(UpdateHidden, self).__init__()
+  def call(self, inputs):
+    node_features, incident_node_features, context_features = inputs
+    return incident_node_features
+
 def AEROGNN(channels = 64, head = 1, lambd = 1., layer_num = 10, drop_rate = 0.6):
   inputs = tf.keras.Input(type_spec = graph_tensor_spec())
   results = inputs.merge_batch_to_components()
@@ -104,4 +111,13 @@ def AEROGNN(channels = 64, head = 1, lambd = 1., layer_num = 10, drop_rate = 0.6
       node_sets = {
         "atom": tfgnn.keras.layers.NodeSetUpdate(
           edge_set_inputs = {
-            "bond": tfgnn.keras.layers.})})
+            "bond": Propagate(k = i + 1, channels = channels, head = head, lambd = lambd)
+          },
+          next_state = UpdateHidden()
+        )
+      }
+    )(results)
+  results = tfgnn.keras.layers.Pool(tag = tfgnn.CONTEXT, reduce_type = "mean", node_set_name = "atom")(results)
+  results = tf.keras.layers.Dense(1)(results)
+  return tf.keras.Model(inputs = inputs, outputs = results)
+
