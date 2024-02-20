@@ -66,8 +66,31 @@ class Propagate(tf.keras.layers.Layer):
     a_ij = z_scale_i + z_scale_j
     a_ij = tf.nn.elu(a_ij) # a_ij.shape = (edge_num, head, channel // head)
     a_ij = tf.math.reduce_sum(self.att * a_ij, axis = -1) # a_ij.shape = (edge_num, head)
-    a_ij = tf.math.softplus(a_ij) + 1e-6
-    # TODO
+    a_ij = tf.math.softplus(a_ij) + 1e-6 # a_ij.shape = (edge_num, head)
+    # NOTE: normalize among target adjacent nodes
+    adj_sum = tfgnn.pool_edges_to_node(graph, edge_set_name, tfgnn.TARGET, reduce_type = 'sum', feature_value = a_ij) # adj_sum.shape = (node_num, head)
+    inv_sqrt_adj_sum = tf.math.pow(tf.maximum(adj_sum, 1e-32), -0.5) # inv_sqrt_adj_sum.shape = (node_num, head)
+    left = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.SOURCE, feature_value = inv_sqrt_adj_sum) # left.shape = (edge_num, head)
+    right = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.TARGET, feature_value = inv_sqrt_adj_sum) # right.shape = (edge_num, head)
+    normalized_aij = left * a_ij * right # normalized_aij.shape = (edge_num, head)
+    normalized_aij = tf.expand_dims(normalized_aij, axis = -1) # normalized_aij.shape = (edge_num, head, 1)
+    x = tfgnn.keras.layers.Readout(node_set_name = 'atom', feature_name = tfgnn.HIDDEN_STATE)(graph) # x.shape = (node_num, channels)
+    x = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.TARGET, feature_value = x) # x.shape = (edge_num, channels)
+    x = tf.reshape(x, (-1, self.head, self.channels // self.head)) # x.shape = (edge_num, head, channels // head)
+    x = normalized_aij * x # x.shape = (edge_num, head, channels // head)
+    x = tfgnn.pool_edges_to_node(graph, edge_set_name, tfgnn.TARGET, reduce_type = 'sum', feature_value = x) # x.shape = (node_num, head, channels // head)
+    x = tf.reshape(x, (-1, self.channels)) # x.shape = (node_num, channels)
+    return x
+  def get_config(self):
+    config = super(Propagate, self).get_config()
+    config['channels'] = self.channels
+    config['head'] = self.head
+    config['lambd'] = self.lambd
+    config['k'] = self.k
+    return config
+  @classmethod
+  def from_config(cls, config):
+    return cls(**config)
 
 def AEROGNN(channels = 64, head = 1, lambd = 1., layer_num = 10, drop_rate = 0.6):
   inputs = tf.keras.Input(type_spec = graph_tensor_spec())
