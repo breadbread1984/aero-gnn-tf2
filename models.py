@@ -59,7 +59,7 @@ class Propagate(tf.keras.layers.Layer):
   def build(self, input_shape):
     self.att = self.add_weight(name = 'att', shape = (1, self.head, self.channels // self.head), trainable = True)
   def call(self, graph, edge_set_name):
-    z = tfgnn.keras.layers.Readout(from_context = True, feature_name = tfgnn.HIDDEN_STATE)(graph)
+    z = tfgnn.keras.layers.Readout(from_context = True, feature_name = tfgnn.HIDDEN_STATE)(graph) # z.shape = (node_num, head, channels // head)
     z_scale = z * tf.math.log((self.lambd / self.k) + (1 + 1e-6)) # z_scale.shape = (node_num, head, channel // head)
     z_scale_i = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.SOURCE, feature_value = z_scale) # z_scale_i.shape = (edge_num, head, channel // head)
     z_scale_j = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.TARGET, feature_value = z_scale) # z_scale_j.shape = (edge_num, head, channel // head)
@@ -103,7 +103,7 @@ def AEROGNN(channels = 64, head = 1, lambd = 1., layer_num = 10, drop_rate = 0.6
   inputs = tf.keras.Input(type_spec = graph_tensor_spec())
   results = inputs.merge_batch_to_components()
   results = tfgnn.keras.layers.MapFeatures(
-    node_sets_fn = lambda node_set, *, node_set_name: FeatInit(hid_channel = channels // head, drop_rate = drop_rate)(node_set[tfgnn.HIDDEN_STATE]))(results)
+    node_sets_fn = lambda node_set, *, node_set_name: FeatInit(hid_channel = channels // head, drop_rate = drop_rate)(node_set[tfgnn.HIDDEN_STATE]))(results) # hidden.shape = (node_num, channels // head)
   # initialize z
   results = tfgnn.keras.layers.GraphUpdate(context = UpdateZ(k = 0, channels = channels, head = head, lambd = lambd))(results)
   for i in range(layer_num):
