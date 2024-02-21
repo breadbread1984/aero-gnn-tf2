@@ -65,7 +65,7 @@ class Propagate(tf.keras.layers.Layer):
     self.att = self.add_weight(name = 'att', shape = (1, self.head, self.channels // self.head), trainable = True)
   def call(self, graph, edge_set_name):
     # NOTE: edge attention weights the importance of edges
-    z = tfgnn.keras.layers.Readout(from_context = True, feature_name = tfgnn.HIDDEN_STATE)(graph) # z.shape = (node_num, head, channels // head)
+    z = tfgnn.keras.layers.Readout(node_set_name = 'atom', feature_name = 'z')(graph) # z.shape = (node_num, head, channels // head)
     z_scale = z * tf.math.log((self.lambd / self.k) + (1 + 1e-6)) # z_scale.shape = (node_num, head, channel // head)
     z_scale_i = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.SOURCE, feature_value = z_scale) # z_scale_i.shape = (edge_num, head, channel // head)
     z_scale_j = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.TARGET, feature_value = z_scale) # z_scale_j.shape = (edge_num, head, channel // head)
