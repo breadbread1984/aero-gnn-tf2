@@ -88,15 +88,17 @@ def graph_tensor_spec(head = 1, channels = 64):
   )
   return spec
 
-def parse_function(serialized_example):
-  graph = tfgnn.parse_single_example(
-    graph_tensor_spec(),
-    serialized_example,
-    validate = True)
-  context_features = graph.context.get_features_dict()
-  label = context_features.pop('label')
-  graph = graph.replace_features(context = context_features)
-  return graph, label
+def get_parse_function(head, channels)
+  def parse_function(serialized_example):
+    graph = tfgnn.parse_single_example(
+      graph_tensor_spec(head = head, channels = channels),
+      serialized_example,
+      validate = True)
+    context_features = graph.context.get_features_dict()
+    label = context_features.pop('label')
+    graph = graph.replace_features(context = context_features)
+    return graph, label
+  return parse_function
 
 def generate_dataset(samples, tfrecord_file):
   writer = tf.io.TFRecordWriter(tfrecord_file)
