@@ -22,14 +22,14 @@ class UpdateZ(tf.keras.layers.Layer):
   def build(self, input_shape):
     self.hop_att = self.add_weight(name = 'hop_att', shape = (1, self.head, (self.channels // self.head) if self.k == 0 else (self.channels // self.head * 2)), trainable = True)
     self.hop_bias = self.add_weight(name = 'hop_bias', shape = (1, self.head), trainable = True)
-  def call(self, graph):
+  def call(self, h, z):
     # NOTE: hop attention weights node importance, Z is accumulated hiddens according attention
     # NOTE: save Z descripted in eq (6) to context
-    h = tfgnn.keras.layers.Readout(node_set_name = 'atom', feature_name = tfgnn.HIDDEN_STATE)(graph) # hidden.shape = (node_num, channels)
+    # NOTE: h.shape = (node_num, channels)
     h = tf.reshape(h, (-1, self.head, self.channels // self.head)) # hidden.shape = (node_num, head, channels // head)
     if self.k != 0:
       # NOTE: get previous calculated hidden
-      z = tfgnn.keras.layers.Readout(from_context = True, feature_name = tfgnn.HIDDEN_STATE)(graph) # z.shape = (node_num, head, channels // head)
+      # NOTE: z.shape = (node_num, head, channels // head)
       z_scale = z * tf.math.log((self.lambd / self.k) + (1 + 1e-6))
       g = tf.concat([h, z_scale], axis = -1) # g.shape = (node_num, head, channels // head * 2)
     else:
@@ -109,10 +109,20 @@ def AEROGNN(channels = 64, head = 1, lambd = 1., layer_num = 10, drop_rate = 0.6
   inputs = tf.keras.Input(type_spec = graph_tensor_spec(head = head, channels = channels))
   results = inputs.merge_batch_to_components()
   results = tfgnn.keras.layers.MapFeatures(
-    node_sets_fn = lambda node_set, *, node_set_name: FeatInit(hid_channel = channels, drop_rate = drop_rate)(node_set[tfgnn.HIDDEN_STATE]))(results) # hidden.shape = (node_num, channels)
+    node_sets_fn = lambda node_set, *, node_set_name: {
+      tfgnn.HIDDEN_STATE: FeatInit(hid_channel = channels, drop_rate = drop_rate)(node_set[tfgnn.HIDDEN_STATE]),
+      'z': node_set['z']
+    }
+  )(results) # hidden.shape = (node_num, channels)
   # initialize z
-  results = tfgnn.keras.layers.GraphUpdate(context = UpdateZ(k = 0, channels = channels, head = head, lambd = lambd))(results)
+  results = tfgnn.keras.layers.MapFeatures(
+    node_sets_fn = lambda node_set, *, node_set_name: {
+      tfgnn.HIDDEN_STATE: node_set[tfgnn.HIDDEN_STATE],
+      'z': UpdateZ(k = 0, channels = channels, head = head, lambd = lambd)(node_set[tfgnn.HIDDEN_STATE], node_set['z'])
+    }
+  )(results)
   for i in range(layer_num):
+    # update hidden
     results = tfgnn.keras.layers.GraphUpdate(
       node_sets = {
         "atom": tfgnn.keras.layers.NodeSetUpdate(
@@ -121,8 +131,14 @@ def AEROGNN(channels = 64, head = 1, lambd = 1., layer_num = 10, drop_rate = 0.6
           },
           next_state = UpdateHidden()
         )
-      },
-      context = UpdateZ(k = i + 1, channels = channels, head = head, lambd = lambd)
+      }
+    )(results)
+    # update z
+    results = tfgnn.keras.layers.MapFeatures(
+      node_sets_fn = lambda node_set, *, node_set_name: {
+        tfgnn.HIDDEN_STATE: node_set[tfgnn.HIDDEN_STATE],
+        'z': UpdateZ(k = i + 1, channels = channels = channels, head = head, lambd = lambd)(node_set[tfgnn.HIDDEN_STATE], node_set['z'])
+      }
     )(results)
   results = tfgnn.keras.layers.Pool(tag = tfgnn.CONTEXT, reduce_type = "mean", node_set_name = "atom")(results)
   results = tf.keras.layers.Dense(1)(results)

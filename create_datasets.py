@@ -39,7 +39,8 @@ def smiles_to_sample(smiles, label, head = 1, channels = 64):
       "atom": tfgnn.NodeSet.from_fields(
         sizes = tf.constant([nodes.shape[0]]),
         features = {
-          tfgnn.HIDDEN_STATE: tf.one_hot(nodes, 118)
+          tfgnn.HIDDEN_STATE: tf.one_hot(nodes, 118),
+          'z': tfgnn.HIDDEN_STATE: tf.zeros((nodes.shape[0], head, channels // head)), # z.shape = (node_num, head, channels // head)
         }
       )
     },
@@ -57,7 +58,6 @@ def smiles_to_sample(smiles, label, head = 1, channels = 64):
     },
     context = tfgnn.Context.from_fields(
       features = {
-        tfgnn.HIDDEN_STATE: tf.zeros((nodes.shape[0], head, channels // head)), # z.shape = (node_num, head, channels // head)
         "label": tf.constant([label,], dtype = tf.float32)
       }
     )
@@ -69,7 +69,8 @@ def graph_tensor_spec(head = 1, channels = 64):
       node_sets_spec = {
         "atom": tfgnn.NodeSetSpec.from_field_specs(
           features_spec = {
-            tfgnn.HIDDEN_STATE: tf.TensorSpec((None, 118), tf.float32)
+            tfgnn.HIDDEN_STATE: tf.TensorSpec((None, 118), tf.float32),
+            'z': tf.TensorSpec(shape = (None, head, channels // head), dtype = tf.float32), #z_scale.shape = (node_num, head, channel // head)
           },
           sizes_spec = tf.TensorSpec((1,), tf.int32)
         )
@@ -85,7 +86,6 @@ def graph_tensor_spec(head = 1, channels = 64):
       },
       context_spec = tfgnn.ContextSpec.from_field_specs(
         features_spec = {
-          tfgnn.HIDDEN_STATE: tf.TensorSpec(shape = (None, head, channels // head), dtype = tf.float32), #z_scale.shape = (node_num, head, channel // head)
           'label': tf.TensorSpec(shape = (1,), dtype = tf.float32)
         }
       )
