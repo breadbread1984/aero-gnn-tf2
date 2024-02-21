@@ -110,7 +110,7 @@ def AEROGNN(channels = 64, head = 1, lambd = 1., layer_num = 10, drop_rate = 0.6
   results = inputs.merge_batch_to_components()
   results = tfgnn.keras.layers.MapFeatures(
     node_sets_fn = lambda node_set, *, node_set_name: {
-      tfgnn.HIDDEN_STATE: FeatInit(hid_channel = channels, drop_rate = drop_rate)(node_set[tfgnn.HIDDEN_STATE]),
+      tfgnn.HIDDEN_STATE: FeatInit(hid_channels = channels, drop_rate = drop_rate)(node_set[tfgnn.HIDDEN_STATE]),
       'z': node_set['z']
     }
   )(results) # hidden.shape = (node_num, channels)
