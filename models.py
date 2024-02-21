@@ -106,7 +106,7 @@ class UpdateHidden(tf.keras.layers.Layer):
     return incident_node_features
 
 def AEROGNN(channels = 64, head = 1, lambd = 1., layer_num = 10, drop_rate = 0.6):
-  inputs = tf.keras.Input(type_spec = graph_tensor_spec())
+  inputs = tf.keras.Input(type_spec = graph_tensor_spec(head = head, channels = channels))
   results = inputs.merge_batch_to_components()
   results = tfgnn.keras.layers.MapFeatures(
     node_sets_fn = lambda node_set, *, node_set_name: FeatInit(hid_channel = channels, drop_rate = drop_rate)(node_set[tfgnn.HIDDEN_STATE]))(results) # hidden.shape = (node_num, channels)

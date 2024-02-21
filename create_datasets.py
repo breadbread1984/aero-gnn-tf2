@@ -14,6 +14,8 @@ FLAGS = flags.FLAGS
 def add_options():
   flags.DEFINE_string('input_csv', default = None, help = 'path to polymer dataset csv')
   flags.DEFINE_string('output_dir', default = 'dataset', help = 'path to output directory')
+  flags.DEFINE_integer('head', default = 1, help = 'number of head')
+  flags.DEFINE_integer('channels', default = 64, help = 'channel size')
 
 def smiles_to_sample(smiles, label, head = 1, channels = 64):
   molecule = Chem.MolFromSmiles(smiles)
@@ -99,7 +101,7 @@ def parse_function(serialized_example):
 def generate_dataset(samples, tfrecord_file):
   writer = tf.io.TFRecordWriter(tfrecord_file)
   for line, (smiles, label) in enumerate(samples):
-    graph = smiles_to_sample(smiles, float(label))
+    graph = smiles_to_sample(smiles, float(label), head = FLAGS.head, channels = FLAGS.channels)
     example = tfgnn.write_example(graph)
     writer.write(example.SerializeToString())
   writer.close()
