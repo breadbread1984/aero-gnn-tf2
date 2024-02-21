@@ -137,7 +137,7 @@ def AEROGNN(channels = 64, head = 1, lambd = 1., layer_num = 10, drop_rate = 0.6
     results = tfgnn.keras.layers.MapFeatures(
       node_sets_fn = lambda node_set, *, node_set_name: {
         tfgnn.HIDDEN_STATE: node_set[tfgnn.HIDDEN_STATE],
-        'z': UpdateZ(k = i + 1, channels = channels = channels, head = head, lambd = lambd)(node_set[tfgnn.HIDDEN_STATE], node_set['z'])
+        'z': UpdateZ(k = i + 1, channels = channels, head = head, lambd = lambd)(node_set[tfgnn.HIDDEN_STATE], node_set['z'])
       }
     )(results)
   results = tfgnn.keras.layers.Pool(tag = tfgnn.CONTEXT, reduce_type = "mean", node_set_name = "atom")(results)
