@@ -64,6 +64,7 @@ class Propagate(tf.keras.layers.Layer):
   def build(self, input_shape):
     self.att = self.add_weight(name = 'att', shape = (1, self.head, self.channels // self.head), trainable = True)
   def call(self, graph, edge_set_name):
+    # NOTE: edge attention weights the importance of edges
     z = tfgnn.keras.layers.Readout(from_context = True, feature_name = tfgnn.HIDDEN_STATE)(graph) # z.shape = (node_num, head, channels // head)
     z_scale = z * tf.math.log((self.lambd / self.k) + (1 + 1e-6)) # z_scale.shape = (node_num, head, channel // head)
     z_scale_i = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.SOURCE, feature_value = z_scale) # z_scale_i.shape = (edge_num, head, channel // head)
@@ -72,7 +73,7 @@ class Propagate(tf.keras.layers.Layer):
     a_ij = tf.nn.elu(a_ij) # a_ij.shape = (edge_num, head, channel // head)
     a_ij = tf.math.reduce_sum(self.att * a_ij, axis = -1) # a_ij.shape = (edge_num, head)
     a_ij = tf.math.softplus(a_ij) + 1e-6 # a_ij.shape = (edge_num, head)
-    # NOTE: normalize among target adjacent nodes
+    # NOTE: normalize weights among fanin adjacent nodes for each target node
     adj_sum = tfgnn.pool_edges_to_node(graph, edge_set_name, tfgnn.TARGET, reduce_type = 'sum', feature_value = a_ij) # adj_sum.shape = (node_num, head)
     inv_sqrt_adj_sum = tf.math.pow(tf.maximum(adj_sum, 1e-32), -0.5) # inv_sqrt_adj_sum.shape = (node_num, head)
     left = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.SOURCE, feature_value = inv_sqrt_adj_sum) # left.shape = (edge_num, head)
@@ -80,7 +81,7 @@ class Propagate(tf.keras.layers.Layer):
     normalized_aij = left * a_ij * right # normalized_aij.shape = (edge_num, head)
     normalized_aij = tf.expand_dims(normalized_aij, axis = -1) # normalized_aij.shape = (edge_num, head, 1)
     x = tfgnn.keras.layers.Readout(node_set_name = 'atom', feature_name = tfgnn.HIDDEN_STATE)(graph) # x.shape = (node_num, channels)
-    x = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.TARGET, feature_value = x) # x.shape = (edge_num, channels)
+    x = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.SOURCE, feature_value = x) # x.shape = (edge_num, channels)
     x = tf.reshape(x, (-1, self.head, self.channels // self.head)) # x.shape = (edge_num, head, channels // head)
     x = normalized_aij * x # x.shape = (edge_num, head, channels // head)
     x = tfgnn.pool_edges_to_node(graph, edge_set_name, tfgnn.TARGET, reduce_type = 'sum', feature_value = x) # x.shape = (node_num, head, channels // head)
