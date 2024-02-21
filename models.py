@@ -9,7 +9,7 @@ def FeatInit(hid_channels = 64, dense_layer_num = 2, drop_rate = 0.5):
   for i in range(dense_layer_num):
     if i != 0: model.add(tf.keras.layers.ELU())
     model.add(tf.keras.layers.Dropout(rate = drop_rate))
-    model.add(tf.keras.Dense(hid_channels))
+    model.add(tf.keras.layers.Dense(hid_channels))
   return model
 
 class UpdateZ(tf.keras.layers.Layer):
