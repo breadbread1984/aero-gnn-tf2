@@ -24,8 +24,8 @@ def main(unused_argv):
   trainset = tf.data.TFRecordDataset(join(FLAGS.dataset, 'trainset.tfrecord')).map(get_parse_function(head = FLAGS.head, channels = FLAGS.channels)).prefetch(FLAGS.batch).shuffle(FLAGS.batch).batch(FLAGS.batch)
   valset = tf.data.TFRecordDataset(join(FLAGS.dataset, 'testset.tfrecord')).map(get_parse_function(head = FLAGS.head, channels = FLAGS.channels)).prefetch(FLAGS.batch).shuffle(FLAGS.batch).batch(FLAGS.batch)
   model = AEROGNN(head = FLAGS.head, channels = FLAGS.channels)
-  loss = [tf.keras.losses.MeanAbsoluteError()]
-  metrics = [tf.keras.metrics.MeanAbsoluteError()]
+  loss = [tf.keras.losses.BinaryCrossentropy()]
+  metrics = [tf.keras.metrics.BinaryAccuracy()]
   optimizer = tf.keras.optimizers.Adam(tf.keras.optimizers.schedules.CosineDecayRestarts(FLAGS.lr, first_decay_steps = FLAGS.decay_steps))
   model.compile(optimizer = optimizer, loss = loss, metrics = metrics)
   if exists(FLAGS.ckpt): model.load_weights(join(FLAGS.ckpt, 'ckpt', 'variables', 'variables'))

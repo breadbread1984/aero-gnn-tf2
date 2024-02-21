@@ -141,6 +141,6 @@ def AEROGNN(channels = 64, head = 1, lambd = 1., layer_num = 10, drop_rate = 0.6
       }
     )(results)
   results = tfgnn.keras.layers.Pool(tag = tfgnn.CONTEXT, reduce_type = "mean", node_set_name = "atom")(results)
-  results = tf.keras.layers.Dense(1)(results)
+  results = tf.keras.layers.Dense(1, activation = tf.keras.activations.sigmoid)(results)
   return tf.keras.Model(inputs = inputs, outputs = results)
 
