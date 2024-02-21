@@ -13,7 +13,7 @@ python3 -m pip install -r requirements.txt
 ## Create dataset
 
 ```shell
-python3 create_dataset.py --input_csv <path/to/csv> --output_dir dataset [--head 1] [--channels 64]
+python3 create_datasets.py --input_csv <path/to/csv> --output_dir dataset [--head 1] [--channels 64]
 ```
 
 ## Train AERO GNN

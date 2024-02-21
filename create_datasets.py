@@ -88,7 +88,7 @@ def graph_tensor_spec(head = 1, channels = 64):
   )
   return spec
 
-def get_parse_function(head, channels)
+def get_parse_function(head, channels):
   def parse_function(serialized_example):
     graph = tfgnn.parse_single_example(
       graph_tensor_spec(head = head, channels = channels),
