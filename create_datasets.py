@@ -32,7 +32,7 @@ def smiles_to_sample(smiles, label, head = 1, channels = 64):
       edges.append((idx, neighbor_idx, bond.GetBondType()))
   sidx = tf.argsort(indices)
   nodes = tf.stack(nodes, axis = 0) # nodes.shape = (node_num,)
-  nodes = nodes[sidx]
+  nodes = tf.gather(nodes, sidx)
   edges = tf.stack(edges, axis = 0) # edges.shape = (edge_num, 3)
   graph = tfgnn.GraphTensor.from_pieces(
     node_sets = {
