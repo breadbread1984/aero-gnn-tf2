@@ -23,20 +23,25 @@ class UpdateZ(tf.keras.layers.Layer):
     self.hop_att = self.add_weight(name = 'hop_att', shape = (1, self.head, (self.channels // self.head) if self.k == 0 else (self.channels // self.head * 2)), trainable = True)
     self.hop_bias = self.add_weight(name = 'hop_bias', shape = (1, self.head), trainable = True)
   def call(self, graph):
+    # NOTE: hop attention weights node importance, Z is accumulated hiddens according attention
+    # NOTE: save Z descripted in eq (6) to context
     h = tfgnn.keras.layers.Readout(node_set_name = 'atom', feature_name = tfgnn.HIDDEN_STATE)(graph) # hidden.shape = (node_num, channels)
+    h = tf.reshape(h, (-1, self.head, self.channels // self.head)) # hidden.shape = (node_num, head, channels // head)
     if self.k != 0:
       # NOTE: get previous calculated hidden
       z = tfgnn.keras.layers.Readout(from_context = True, feature_name = tfgnn.HIDDEN_STATE)(graph) # z.shape = (node_num, head, channels // head)
       z_scale = z * tf.math.log((self.lambd / self.k) + (1 + 1e-6))
-      h = tf.concat([h, z_scale], axis = -1) # h.shape = (node_num, head, channels // head * 2)
-    h = tf.reshape(h, (-1, self.head, (self.channels // self.head) if self.k == 0 else (self.channels // self.head * 2))) # hidden.shape = (node_num, head, channels // head)
-    hop_attention = tf.nn.elu(h) # hop_attention.shape = (node_num, head, channels // head)
+      g = tf.concat([h, z_scale], axis = -1) # g.shape = (node_num, head, channels // head * 2)
+    else:
+      g = h # g.shape = (node_num, head, channels // head)
+    hop_attention = tf.nn.elu(g) # hop_attention.shape = (node_num, head, channels // head)
     hop_attention = tf.math.reduce_sum(self.hop_att * hop_attention, axis = -1) + self.hop_bias # hop_attention.shape = (node_num, head)
+    hop_attention = tf.expand_dims(hop_attention, axis = -1) # hop_attention.shape = (node_num, head, 1)
     if self.k == 0:
-      z = hidden * hop_attention # z.shape = (node_num, head, channel // head)
+      z = h * hop_attention # z.shape = (node_num, head, channel // head)
     else:
       # NOTE: accumulate with previous calculated hidden
-      z = z + hidden * hop_attention # z.shape = (node_num, head, channel // head)
+      z = z + h * hop_attention # z.shape = (node_num, head, channel // head)
     return z
   def get_config(self):
     config = super(UpdateZ, self).get_config()
