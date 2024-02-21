@@ -40,7 +40,7 @@ def smiles_to_sample(smiles, label, head = 1, channels = 64):
         sizes = tf.constant([nodes.shape[0]]),
         features = {
           tfgnn.HIDDEN_STATE: tf.one_hot(nodes, 118),
-          'z': tfgnn.HIDDEN_STATE: tf.zeros((nodes.shape[0], head, channels // head)), # z.shape = (node_num, head, channels // head)
+          'z': tf.zeros((nodes.shape[0], head, channels // head)), # z.shape = (node_num, head, channels // head)
         }
       )
     },
